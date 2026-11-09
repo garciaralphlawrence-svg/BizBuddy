@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biz Buddy · executive VA partnerships</title>
+    <!-- Font Awesome 6 (free) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- External Stylesheets -->
+    <link rel="stylesheet" href="styles.css">
+    <link id="roleStylesheet" rel="stylesheet" href="" disabled>
+</head>
+<body>
+    <!-- Navigation (unchanged, just the polished structure) -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-handshake"></i>
+                <span>Biz Buddy</span>
+            </div>
+            <div class="nav-links">
+                <a href="#home" class="nav-link">Home</a>
+                <a href="#services" class="nav-link">Services</a>
+                <a href="#requirements" class="nav-link">VA Requirements</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="#contact" class="nav-link">Contact</a>
+                <button class="btn btn-secondary" onclick="openLoginModal('client')">Client</button>
+                <button class="btn btn-secondary" onclick="openLoginModal('va')">VA</button>
+                <button class="btn btn-accent" onclick="openLoginModal()">Login</button>
+            </div>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== HERO SECTION ===== -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>Executive‑grade virtual partnerships</h1>
+            <p>Secure a dedicated assistant who thinks like a leader — administrative, strategic, seamless.</p>
+            <div class="hero-buttons">
+                <button class="btn btn-primary" onclick="openLoginModal('client')">
+                    hire an executive VA
+                </button>
+                <button class="btn btn-secondary" onclick="openLoginModal('va')">
+                    become a partner
+                </button>
+            </div>
+        </div>
+        <div class="hero-image" aria-hidden="true">
+            <svg viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg" role="img">
+                <defs>
+                    <linearGradient id="pulseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#c6a45c" stop-opacity="0.7" />
+                        <stop offset="100%" stop-color="#24c1fa" stop-opacity="0.35" />
+                    </linearGradient>
+                </defs>
+                <circle class="pulse" cx="320" cy="320" r="190" fill="url(#pulseGradient)" />
+                <circle cx="320" cy="320" r="230" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="2" />
+                <path d="M 120 420 C 220 480 420 260 520 320" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" stroke-linecap="round" />
+                <path d="M 160 180 C 260 120 480 380 540 260" fill="none" stroke="rgba(198,164,92,0.3)" stroke-width="2" stroke-linecap="round" />
+                <g opacity="0.7">
+                    <circle cx="280" cy="260" r="12" fill="#ffffff" />
+                    <circle cx="420" cy="360" r="10" fill="#c6a45c" />
+                    <circle cx="220" cy="380" r="8" fill="#24c1fa" />
+                </g>
+            </svg>
+        </div>
+    </section>
+
+    <!-- ===== VA REQUIREMENTS SECTION ===== -->
+    <section id="requirements" class="requirements">
+        <div class="container">
+            <h2>VA Application Requirements</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <i class="fas fa-laptop-house"></i>
+                    <h3>Work Readiness</h3>
+                    <p>Reliable laptop, stable internet, and a professional remote work environment.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-briefcase"></i>
+                    <h3>Experience</h3>
+                    <p>At least 6 months of VA, admin, support, or operations experience preferred.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-comments"></i>
+                    <h3>Communication</h3>
+                    <p>Strong English writing and professional client communication standards.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Professionalism</h3>
+                    <p>Confidentiality, time discipline, and consistent responsiveness.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SERVICES SECTION ===== -->
+    <section id="services" class="services">
+        <div class="container">
+            <h2>Capabilities</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <i class="fas fa-calendar-alt"></i>
+                    <h3>Calendar & Travel</h3>
+                    <p>Seamless scheduling, booking management, and logistical coordination globally.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-envelope"></i>
+                    <h3>Email & Communications</h3>
+                    <p>Strategic inbox management and consistent high-level correspondence.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>Reporting & Analytics</h3>
+                    <p>Data synthesis, insight generation, and executive dashboards.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-users"></i>
+                    <h3>Stakeholder Management</h3>
+                    <p>Relationship stewardship and strategic business development support.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-file-alt"></i>
+                    <h3>Content & Documentation</h3>
+                    <p>Presentations, proposals, templates, and strategic documentation.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-cogs"></i>
+                    <h3>Operations & Process</h3>
+                    <p>Strategic workflows, vendor coordination, and efficiency optimization.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== ABOUT SECTION ===== -->
+    <section id="about" class="about">
+        <div class="container">
+            <div class="about-content">
+                <div class="about-text">
+                    <h2>Behind Biz Buddy</h2>
+                    <p>We place top 1% virtual talent with executive leaders. Every assistant is vetted, experienced, and culturally aligned.</p>
+                    <p>Trusted by scale‑ups, partners, and private equity offices.</p>
+                </div>
+                <div class="about-stats">
+                    <div class="stat">
+                        <span class="stat-number">520+</span>
+                        <span class="stat-label">Vetted VAs</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">1.2k</span>
+                        <span class="stat-label">Clients</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">98%</span>
+                        <span class="stat-label">Retention</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== CONTACT SECTION ===== -->
+    <section id="contact" class="contact">
+        <div class="container">
+            <h2>Inquire</h2>
+            <div class="contact-content">
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <i class="fas fa-envelope"></i>
+                        <span>hello@bizbuddy.com</span>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-phone"></i>
+                        <span>+1 (212) 555 9800</span>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>New York / London / remote</span>
+                    </div>
+                </div>
+                <form id="contactForm" class="contact-form" onsubmit="handleContactSubmit(event)">
+                    <div class="form-group">
+                        <input type="text" id="contactName" placeholder="Name" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="email" id="contactEmail" placeholder="Email" required>
+                    </div>
+                    <div class="form-group">
+                        <textarea id="contactMessage" placeholder="Message" rows="4" required></textarea>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Send message</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== DASHBOARD SECTION (Hidden by default) ===== -->
+    <section id="dashboard" class="dashboard" style="display: none;">
+        <div class="container">
+            <div class="dashboard-header">
+                <h2 id="dashboardTitle">Dashboard</h2>
+                <span id="dashboardNotifications" class="status-badge" style="display: none;">0 New</span>
+                <button class="btn btn-secondary" onclick="logout()">Logout</button>
+            </div>
+
+            <!-- Client Dashboard -->
+            <div id="clientDashboard" class="dashboard-grid" style="display: none;">
+                <div class="dashboard-card">
+                    <h3>Your Posted Tasks</h3>
+                    <p id="clientTaskSummary">Track status and applicants from one place.</p>
+                    <button class="btn btn-primary" onclick="openPostTaskModal()">Post New Task</button>
+                    <div id="clientTasks" class="task-list">
+                        <!-- Client tasks render here -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Find a VA</h3>
+                    <input
+                        type="text"
+                        id="clientVaSearch"
+                        class="message-input"
+                        placeholder="Search by name, email, or skills"
+                        oninput="renderClientVADirectory()"
+                    >
+                    <div id="clientVaDirectory" class="task-list" style="margin-top: 0.75rem;">
+                        <!-- VA directory renders here -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Private Messages</h3>
+                    <div id="clientConversations" class="task-list">
+                        <!-- Client conversations render here -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Top VA Matches</h3>
+                    <p>Recommended from your open task needs.</p>
+                    <div id="clientMatches" class="task-list">
+                        <!-- Smart matches render here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VA Dashboard -->
+            <div id="vaDashboard" class="dashboard-grid" style="display: none;">
+                <div class="dashboard-card">
+                    <h3>Available Opportunities</h3>
+                    <p id="vaApprovalNote">Apply to matching tasks and grow your client portfolio.</p>
+                    <div id="vaTasks" class="task-list">
+                        <!-- VA available tasks render here -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Your Assigned Tasks</h3>
+                    <div id="vaAssignedTasks" class="task-list">
+                        <!-- VA assigned tasks render here -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Client Messages</h3>
+                    <div id="vaConversations" class="task-list">
+                        <!-- VA conversations render here -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Call Invitations</h3>
+                    <div id="vaSchedules" class="task-list">
+                        <!-- Schedule invitations render here -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>VA Courses</h3>
+                    <p id="vaCourseSummary">Build high-value skills and track completion certificates.</p>
+                    <div id="vaCourses" class="task-list">
+                        <!-- VA courses render here -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Your Profile</h3>
+                    <button class="btn btn-primary" onclick="openProfileModal()">Edit Profile</button>
+                    <p>Update your skills and availability to match with better opportunities.</p>
+                </div>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div id="adminDashboard" class="dashboard-grid" style="display: none;">
+                <div class="dashboard-card">
+                    <h3>Platform Stats</h3>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="stat-number" id="totalUsers">220</span>
+                            <span class="stat-label">Total Users</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number" id="activeTasks">5</span>
+                            <span class="stat-label">Active Tasks</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number" id="completedTasks">128</span>
+                            <span class="stat-label">Completed</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Recent Inquiries</h3>
+                    <div id="adminInquiries" class="task-list">
+                        <!-- inquiries render here -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>VA Applications</h3>
+                    <div id="adminVaApplications" class="task-list">
+                        <!-- VA applications render here -->
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Admin Tools</h3>
+                    <div class="inline-row">
+                        <button class="btn btn-primary btn-sm" onclick="bulkApproveVAs()">Bulk Approve All Pending VAs</button>
+                        <button class="btn btn-primary btn-sm" onclick="exportDataCsv('users')">Export Users CSV</button>
+                        <button class="btn btn-primary btn-sm" onclick="exportDataCsv('tasks')">Export Tasks CSV</button>
+                        <button class="btn btn-primary btn-sm" onclick="exportDataCsv('inquiries')">Export Inquiries CSV</button>
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h3>Task Moderation</h3>
+                    <div id="adminTaskModeration" class="task-list">
+                        <!-- Admin task moderation renders here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== MODALS ===== -->
+
+    <!-- Login/Signup Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="authTitle">Log in to Biz Buddy</h3>
+                    <p id="authSubtitle">Use your email to sign in.</p>
+                </div>
+                <span class="modal-close" onclick="closeModal('loginModal')">&times;</span>
+            </div>
+
+            <div class="auth-tabs" role="tablist">
+                <button type="button" class="auth-tab active" data-mode="login" onclick="setAuthMode('login')">
+                    Log in
+                </button>
+                <button type="button" class="auth-tab" data-mode="signup" onclick="setAuthMode('signup')">
+                    Sign up
+                </button>
+            </div>
+
+            <div id="authError" class="error-message" style="display: none;"></div>
+
+            <!-- Login Form -->
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" placeholder="name@company.com" required>
+                    <span class="error-message" id="loginEmailError"></span>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="··········" required>
+                    <span class="error-message" id="loginPasswordError"></span>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('loginModal')">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">Log in</button>
+                </div>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="signupForm" onsubmit="handleSignup(event)" style="display: none;">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="signupEmail" placeholder="name@company.com" required>
+                    <span class="error-message" id="signupEmailError"></span>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="signupPassword" placeholder="Create a password" required>
+                    <span class="error-message" id="signupPasswordError"></span>
+                </div>
+                <div class="form-group">
+                    <label>Confirm password</label>
+                    <input type="password" id="signupConfirm" placeholder="Re-enter password" required>
+                    <span class="error-message" id="signupConfirmError"></span>
+                </div>
+                <div class="form-group" id="signupRoleGroup" style="display: none;">
+                    <label>Account type</label>
+                    <select id="signupRole">
+                        <option value="client">Client</option>
+                        <option value="va">VA</option>
+                    </select>
+                </div>
+                <div class="form-group" id="vaApplicationFields" style="display: none;">
+                    <label>VA application details</label>
+                    <input type="url" id="signupCvLink" placeholder="Resume/CV link (Google Drive, Dropbox, etc.)">
+                    <input type="url" id="signupPortfolioLink" placeholder="Portfolio or sample work link">
+                    <span class="error-message" id="signupVaDetailsError"></span>
+                </div>
+                <div class="form-group" id="vaRequirementsChecklist" style="display: none;">
+                    <label>VA application requirements</label>
+                    <div class="requirement-checklist">
+                        <label><input type="checkbox" id="reqEnglish"> I can communicate in professional English.</label>
+                        <label><input type="checkbox" id="reqTools"> I have a reliable laptop and internet connection.</label>
+                        <label><input type="checkbox" id="reqConfidentiality"> I agree to confidentiality and professional standards.</label>
+                    </div>
+                    <span class="error-message" id="signupRequirementsError"></span>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('loginModal')">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">Create account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Post Task Modal -->
+    <div id="postTaskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3>Post a New Task</h3>
+                    <p>Describe your task and set the budget.</p>
+                </div>
+                <span class="modal-close" onclick="closeModal('postTaskModal')">&times;</span>
+            </div>
+            <form id="postTaskForm" onsubmit="handlePostTask(event)">
+                <div class="form-group">
+                    <label>Task Title</label>
+                    <input type="text" id="taskTitle" placeholder="e.g., Quarterly Board Deck" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="taskDescription" placeholder="Describe the task in detail" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Budget ($)</label>
+                    <input type="number" id="taskBudget" placeholder="500" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="taskCategory" required>
+                        <option value="">Select a category</option>
+                        <option value="admin">Administrative</option>
+                        <option value="content">Content</option>
+                        <option value="research">Research</option>
+                        <option value="travel">Travel</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Milestone</label>
+                    <input type="text" id="taskMilestone" placeholder="e.g., Initial draft due in 3 days">
+                </div>
+                <div class="form-group">
+                    <label>Attach brief (optional)</label>
+                    <input type="file" id="taskAttachment" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('postTaskModal')">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">Post Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3>Your Profile</h3>
+                    <p>Keep your information current.</p>
+                </div>
+                <span class="modal-close" onclick="closeModal('profileModal')">&times;</span>
+            </div>
+            <form id="profileForm" onsubmit="handleProfileSave(event)">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="profileName" placeholder="Your name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="profileEmail" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Bio</label>
+                    <textarea id="profileBio" placeholder="Tell us about yourself" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Skills</label>
+                    <textarea id="profileSkills" placeholder="e.g., Executive Coordination, Strategic Planning, Financial Analysis" rows="3"></textarea>
+                </div>
+                <div id="vaProfileFields" style="display: none;">
+                    <div class="form-group">
+                        <label>Tools</label>
+                        <input type="text" id="profileTools" placeholder="e.g., Google Workspace, Notion, Asana">
+                    </div>
+                    <div class="form-group">
+                        <label>Years of Experience</label>
+                        <input type="number" id="profileExperience" min="0" step="1" placeholder="2">
+                    </div>
+                    <div class="form-group">
+                        <label>Hourly Rate (USD)</label>
+                        <input type="number" id="profileRate" min="0" step="1" placeholder="12">
+                    </div>
+                    <div class="form-group">
+                        <label>Availability</label>
+                        <select id="profileAvailability">
+                            <option value="">Select availability</option>
+                            <option value="Part-time">Part-time</option>
+                            <option value="Full-time">Full-time</option>
+                            <option value="Project-based">Project-based</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Timezone</label>
+                        <input type="text" id="profileTimezone" placeholder="e.g., GMT+8">
+                    </div>
+                    <div class="form-group">
+                        <label>Verification Document (optional)</label>
+                        <input type="file" id="profileVerificationFile" accept=".pdf,.jpg,.jpeg,.png">
+                    </div>
+                    <div id="profileVerificationPreview" class="inline-row"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('profileModal')">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">Save Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Private Message Modal -->
+    <div id="privateMessageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3>Private Message</h3>
+                    <p id="privateMessageRecipient">Send a direct message.</p>
+                </div>
+                <span class="modal-close" onclick="closeModal('privateMessageModal')">&times;</span>
+            </div>
+            <form id="privateMessageForm" onsubmit="handlePrivateMessageSend(event)">
+                <input type="hidden" id="pmVaId">
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="privateMessageText" rows="4" placeholder="Introduce your needs and expected support..." required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('privateMessageModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send message</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- VA Profile Preview Modal -->
+    <div id="vaProfilePreviewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h3 id="vaPreviewName">VA Profile</h3>
+                    <p id="vaPreviewSubtitle">Review details before messaging.</p>
+                </div>
+                <span class="modal-close" onclick="closeModal('vaProfilePreviewModal')">&times;</span>
+            </div>
+            <input type="hidden" id="previewVaId">
+            <div id="vaPreviewContent" class="task-item">
+                <!-- VA profile details render here -->
+            </div>
+            <div class="form-group" style="margin-top: 1rem;">
+                <label>Invite to your task</label>
+                <select id="previewInviteTask">
+                    <option value="">Select one of your open tasks</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-top: 1rem;">
+                <label>Propose call schedule</label>
+                <input type="datetime-local" id="previewCallTime">
+            </div>
+            <div class="form-actions" style="margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('vaProfilePreviewModal')">Close</button>
+                <button type="button" class="btn btn-primary" onclick="invitePreviewedVAToTask()">Invite to Task</button>
+                <button type="button" class="btn btn-primary" onclick="scheduleCallWithPreviewedVA()">Schedule Call</button>
+                <button type="button" class="btn btn-primary" onclick="messagePreviewedVA()">Message VA</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <i class="fas fa-handshake"></i>
+                    <span>Biz Buddy</span>
+                </div>
+                <div class="footer-links">
+                    <a href="#" onclick="event.preventDefault();">About</a>
+                    <a href="#" onclick="event.preventDefault();">Privacy</a>
+                    <a href="#" onclick="event.preventDefault();">Terms</a>
+                </div>
+                <div class="footer-social">
+                    <a href="#" title="LinkedIn" onclick="event.preventDefault();"><i class="fab fa-linkedin"></i></a>
+                    <a href="#" title="Twitter" onclick="event.preventDefault();"><i class="fab fa-twitter"></i></a>
+                    <a href="#" title="Email" onclick="event.preventDefault();"><i class="fas fa-envelope"></i></a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Biz Buddy. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- External JavaScript -->
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
