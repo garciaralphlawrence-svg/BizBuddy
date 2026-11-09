@@ -46,113 +46,498 @@ function parseStoredJson(key, fallback) {
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
-    // Initialize sample tasks if not present
-    if (!localStorage.getItem(STORAGE_KEYS.tasks)) {
-        const sampleTasks = [
-            {
-                id: 1,
-                title: "Quarterly board deck",
-                description: "Create slide deck for investor meeting",
-                category: "content",
-                budget: 650,
-                deadline: "2025-04-10",
-                status: "open",
-                clientId: "client1",
-                postedDate: "2025-03-01",
-                applicants: [],
-                acceptedVaId: null,
-                messages: [],
-                ratings: {}
-            },
-            {
-                id: 2,
-                title: "Executive travel & calendar",
-                description: "Coordinate multi‑city trip",
-                category: "admin",
-                budget: 420,
-                deadline: "2025-03-28",
-                status: "open",
-                clientId: "client2",
-                postedDate: "2025-03-02",
-                applicants: [],
-                acceptedVaId: null,
-                messages: [],
-                ratings: {}
-            }
-        ];
-        localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(sampleTasks));
+    // Demo mode: pre-fill realistic sample data on the first visit.
+    if (localStorage.getItem(DEMO_SEED_KEY) !== DEMO_SEED_VERSION) {
+        seedDemoData();
     }
+    ensureDefaultKeys();
 
-    if (!localStorage.getItem(STORAGE_KEYS.users)) {
-        const demoUsers = [
-            { id: 'admin1', email: 'admin@bizbuddy.com', password: 'admin123', role: 'admin' },
-            { id: 'client1', email: 'client@bizbuddy.com', password: 'client123', role: 'client' },
-            { id: 'va1', email: 'va@bizbuddy.com', password: 'va12345', role: 'va', approvalStatus: 'approved' }
-        ];
-        saveUsers(demoUsers);
+    // Cloud sync is optional; in demo mode this resolves to false immediately.
+    try {
+        await (window.bizBuddySupabaseReady || Promise.resolve(false));
+    } catch (_error) {
+        // Stay in local mode.
     }
-
-    if (!localStorage.getItem(STORAGE_KEYS.courses)) {
-        const defaultCourses = [
-            {
-                id: 1,
-                title: 'Executive Inbox Management',
-                level: 'Beginner',
-                duration: '2h 30m',
-                description: 'Prioritization frameworks, tone standards, and response workflows.'
-            },
-            {
-                id: 2,
-                title: 'Calendar Intelligence for VAs',
-                level: 'Intermediate',
-                duration: '3h 00m',
-                description: 'Design conflict-free schedules and cross-timezone executive calendars.'
-            },
-            {
-                id: 3,
-                title: 'Board-Level Reporting Basics',
-                level: 'Advanced',
-                duration: '4h 15m',
-                description: 'Build concise reports and dashboards for leadership updates.'
-            }
-        ];
-        localStorage.setItem(STORAGE_KEYS.courses, JSON.stringify(defaultCourses));
-        syncStateKeyToSupabase(STORAGE_KEYS.courses, defaultCourses);
-    }
-
-    if (!localStorage.getItem(STORAGE_KEYS.courseProgress)) {
-        localStorage.setItem(STORAGE_KEYS.courseProgress, JSON.stringify({}));
-    }
-
-    if (!localStorage.getItem(STORAGE_KEYS.inquiries)) {
-        localStorage.setItem(STORAGE_KEYS.inquiries, JSON.stringify([]));
-    }
-
-    if (!localStorage.getItem(STORAGE_KEYS.conversations)) {
-        localStorage.setItem(STORAGE_KEYS.conversations, JSON.stringify([]));
-    }
-
-    if (!localStorage.getItem(STORAGE_KEYS.schedules)) {
-        localStorage.setItem(STORAGE_KEYS.schedules, JSON.stringify([]));
-    }
-
     await loadStateFromSupabase();
 
     ensureDataConsistency();
 
-    // Load user profile if exists
     setupNav();
     setupScroll();
     setupGlobalInteractions();
 
     const session = getCurrentSession();
     if (session) {
-        currentUser = session;
-        currentRole = session.role;
-        openDashboard(session.role);
+        // Refresh the session from the stored user so admin changes (e.g. VA approval) apply.
+        const storedUser = getUserById(session.id);
+        if (storedUser) {
+            currentUser = storedUser;
+            currentRole = storedUser.role;
+            saveCurrentSession(storedUser);
+            openDashboard(storedUser.role);
+        } else {
+            clearCurrentSession();
+        }
     }
+    updateNavForSession();
 
     syncAllStateToSupabase();
+}
+
+function ensureDefaultKeys() {
+    const defaults = {
+        [STORAGE_KEYS.tasks]: [],
+        [STORAGE_KEYS.users]: [],
+        [STORAGE_KEYS.userProfiles]: {},
+        [STORAGE_KEYS.courses]: DEMO_COURSES,
+        [STORAGE_KEYS.courseProgress]: {},
+        [STORAGE_KEYS.inquiries]: [],
+        [STORAGE_KEYS.conversations]: [],
+        [STORAGE_KEYS.schedules]: []
+    };
+    Object.entries(defaults).forEach(([key, value]) => {
+        if (!localStorage.getItem(key)) {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+    });
+}
+
+// ===== DEMO DATA =====
+const DEMO_SEED_KEY = 'bizbuddyDemoSeed';
+const DEMO_SEED_VERSION = '2';
+
+const DEMO_COURSES = [
+    {
+        id: 1,
+        title: 'Executive Inbox Management',
+        level: 'Beginner',
+        duration: '2h 30m',
+        description: 'Prioritization frameworks, tone standards, and response workflows.'
+    },
+    {
+        id: 2,
+        title: 'Calendar Intelligence for VAs',
+        level: 'Intermediate',
+        duration: '3h 00m',
+        description: 'Design conflict-free schedules and cross-timezone executive calendars.'
+    },
+    {
+        id: 3,
+        title: 'Board-Level Reporting Basics',
+        level: 'Advanced',
+        duration: '4h 15m',
+        description: 'Build concise reports and dashboards for leadership updates.'
+    }
+];
+
+function buildDemoData() {
+    const now = Date.now();
+    const hour = 60 * 60 * 1000;
+    const day = 24 * hour;
+    const iso = (offsetMs) => new Date(now + offsetMs).toISOString();
+    const date = (offsetMs) => iso(offsetMs).slice(0, 10);
+
+    // Upcoming call slot: 2 days from now at 10:00 local time.
+    const callSlot = new Date(now + 2 * day);
+    callSlot.setHours(10, 0, 0, 0);
+    const pastCall = new Date(now - 3 * day);
+    pastCall.setHours(15, 30, 0, 0);
+
+    const users = [
+        { id: 'admin1', email: 'admin@bizbuddy.com', password: 'admin123', role: 'admin' },
+        { id: 'client1', email: 'client@bizbuddy.com', password: 'client123', role: 'client' },
+        { id: 'client2', email: 'marcus@northwindcap.com', password: 'demo1234', role: 'client' },
+        { id: 'va1', email: 'va@bizbuddy.com', password: 'va12345', role: 'va', approvalStatus: 'approved' },
+        { id: 'va2', email: 'daniel.okafor@bizbuddy.com', password: 'demo1234', role: 'va', approvalStatus: 'approved' },
+        { id: 'va3', email: 'priya.raman@bizbuddy.com', password: 'demo1234', role: 'va', approvalStatus: 'approved' },
+        { id: 'va4', email: 'jamie.cruz@gmail.com', password: 'demo1234', role: 'va', approvalStatus: 'pending' }
+    ];
+
+    const blankProfile = {
+        name: '', email: '', bio: '', skills: '', tools: '', experienceYears: '', hourlyRate: '',
+        availability: '', timezone: '', cvLink: '', portfolioLink: '',
+        verificationStatus: '', verificationDocName: '', verificationDocData: ''
+    };
+
+    const userProfiles = {
+        admin1: { ...blankProfile, name: 'Biz Buddy Admin', email: 'admin@bizbuddy.com' },
+        client1: {
+            ...blankProfile,
+            name: 'Alexandra Reyes',
+            email: 'client@bizbuddy.com',
+            bio: 'COO at Brightline Ventures. Needs proactive support across board prep and investor relations.',
+            skills: 'Operations, Investor Relations'
+        },
+        client2: {
+            ...blankProfile,
+            name: 'Marcus Chen',
+            email: 'marcus@northwindcap.com',
+            bio: 'Managing Partner, Northwind Capital.',
+            skills: 'Private Equity, Deal Flow'
+        },
+        va1: {
+            ...blankProfile,
+            name: 'Sofia Navarro',
+            email: 'va@bizbuddy.com',
+            bio: 'Executive assistant with 6 years supporting founders and C-suite leaders across US and EU time zones.',
+            skills: 'Executive coordination, admin, calendar management, content, board decks',
+            tools: 'Google Workspace, Notion, Asana, Canva',
+            experienceYears: '6',
+            hourlyRate: '18',
+            availability: 'Full-time',
+            timezone: 'GMT+8',
+            verificationStatus: 'verified'
+        },
+        va2: {
+            ...blankProfile,
+            name: 'Daniel Okafor',
+            email: 'daniel.okafor@bizbuddy.com',
+            bio: 'Research-focused VA. Market scans, competitor analysis, and investor CRM hygiene.',
+            skills: 'Research, data analysis, CRM management, reporting',
+            tools: 'HubSpot, Airtable, Excel, Notion',
+            experienceYears: '4',
+            hourlyRate: '15',
+            availability: 'Part-time',
+            timezone: 'GMT+1',
+            verificationStatus: 'verified'
+        },
+        va3: {
+            ...blankProfile,
+            name: 'Priya Raman',
+            email: 'priya.raman@bizbuddy.com',
+            bio: 'Travel and events specialist for globally mobile executives.',
+            skills: 'Travel planning, admin, events, vendor coordination',
+            tools: 'Google Workspace, Slack, Navan',
+            experienceYears: '5',
+            hourlyRate: '16',
+            availability: 'Full-time',
+            timezone: 'GMT+5:30',
+            verificationStatus: 'unverified'
+        },
+        va4: {
+            ...blankProfile,
+            name: 'Jamie Cruz',
+            email: 'jamie.cruz@gmail.com',
+            bio: 'Customer support lead moving into executive assistance.',
+            skills: 'Inbox management, customer support, scheduling',
+            tools: 'Zendesk, Google Workspace',
+            experienceYears: '2',
+            hourlyRate: '10',
+            availability: 'Project-based',
+            timezone: 'GMT+8',
+            cvLink: 'https://example.com/jamie-cruz-cv.pdf',
+            portfolioLink: 'https://example.com/jamie-cruz-portfolio',
+            verificationStatus: 'unverified'
+        }
+    };
+
+    const baseTask = {
+        deadline: '', applicants: [], acceptedVaId: null, messages: [], ratings: {},
+        milestone: '', attachmentName: '', attachmentData: '', invoiceStatus: 'pending'
+    };
+
+    const tasks = [
+        {
+            ...baseTask,
+            id: 1,
+            title: 'Quarterly board deck',
+            description: 'Create a 20-slide deck for the Q3 investor meeting from our finance and ops updates.',
+            category: 'content',
+            budget: 650,
+            deadline: date(10 * day),
+            status: 'open',
+            clientId: 'client1',
+            postedDate: date(-3 * day),
+            applicants: ['va1', 'va2'],
+            milestone: 'Outline due in 3 days'
+        },
+        {
+            ...baseTask,
+            id: 2,
+            title: 'Executive travel & calendar',
+            description: 'Coordinate a multi-city trip (New York, London, Singapore) and rebalance the calendar around it.',
+            category: 'travel',
+            budget: 420,
+            deadline: date(7 * day),
+            status: 'open',
+            clientId: 'client2',
+            postedDate: date(-2 * day),
+            applicants: ['va3'],
+            milestone: 'Draft itinerary in 48 hours'
+        },
+        {
+            ...baseTask,
+            id: 3,
+            title: 'Inbox triage & weekly digest',
+            description: 'Own daily inbox triage and send a Friday digest of decisions needed.',
+            category: 'admin',
+            budget: 380,
+            status: 'in-progress',
+            clientId: 'client1',
+            postedDate: date(-12 * day),
+            applicants: ['va1'],
+            acceptedVaId: 'va1',
+            milestone: 'First digest this Friday',
+            messages: [
+                { senderId: 'client1', text: 'Welcome aboard! Please flag anything from the board chair as urgent.', createdAt: iso(-5 * day) },
+                { senderId: 'va1', text: 'Got it. I have set up filters and a priority label for board mail.', createdAt: iso(-5 * day + 2 * hour) },
+                { senderId: 'va1', text: 'Inbox is down from 412 to 37 unread. Digest draft is in your Drive.', createdAt: iso(-1 * day) }
+            ]
+        },
+        {
+            ...baseTask,
+            id: 4,
+            title: 'Investor CRM cleanup',
+            description: 'Deduplicate and tag 1,200 investor contacts in HubSpot ahead of the fundraise.',
+            category: 'research',
+            budget: 300,
+            status: 'completed',
+            clientId: 'client1',
+            postedDate: date(-20 * day),
+            applicants: ['va1', 'va2'],
+            acceptedVaId: 'va1',
+            milestone: 'Delivered',
+            messages: [
+                { senderId: 'va1', text: 'Cleanup complete: 214 duplicates merged, all contacts tagged by stage.', createdAt: iso(-2 * day) }
+            ]
+        },
+        {
+            ...baseTask,
+            id: 5,
+            title: 'APAC market research brief',
+            description: 'Summarize market size, key players, and regulatory notes for APAC expansion.',
+            category: 'research',
+            budget: 540,
+            status: 'completed',
+            clientId: 'client2',
+            postedDate: date(-30 * day),
+            applicants: ['va2'],
+            acceptedVaId: 'va2',
+            invoiceStatus: 'paid',
+            ratings: { clientToVa: 5, vaToClient: 5 }
+        },
+        {
+            ...baseTask,
+            id: 6,
+            title: 'Weekly KPI dashboard',
+            description: 'Build a one-page weekly KPI dashboard from Stripe and HubSpot exports.',
+            category: 'content',
+            budget: 450,
+            status: 'completed',
+            clientId: 'client2',
+            postedDate: date(-40 * day),
+            applicants: ['va1'],
+            acceptedVaId: 'va1',
+            invoiceStatus: 'paid',
+            ratings: { clientToVa: 5, vaToClient: 4 }
+        },
+        {
+            ...baseTask,
+            id: 7,
+            title: 'Lisbon leadership offsite logistics',
+            description: 'Book venue, hotel block, and ground transport for a 12-person leadership offsite.',
+            category: 'travel',
+            budget: 720,
+            deadline: date(21 * day),
+            status: 'open',
+            clientId: 'client1',
+            postedDate: date(-1 * day),
+            milestone: 'Venue shortlist in 5 days'
+        }
+    ];
+
+    const conversations = [
+        {
+            id: 101,
+            clientId: 'client1',
+            vaId: 'va1',
+            createdAt: iso(-6 * day),
+            updatedAt: iso(-4 * hour),
+            messages: [
+                { senderId: 'client1', text: 'Hi Sofia, loved your work on the CRM cleanup. Would you take on the board deck too?', createdAt: iso(-6 * day), readBy: ['client1', 'va1'] },
+                { senderId: 'va1', text: 'Absolutely. I just applied, and I can have an outline to you within 3 days.', createdAt: iso(-6 * day + 3 * hour), readBy: ['va1', 'client1'] },
+                { senderId: 'va1', text: 'Happy to walk through the narrative on a quick call this week.', createdAt: iso(-4 * hour), readBy: ['va1'] }
+            ]
+        },
+        {
+            id: 102,
+            clientId: 'client1',
+            vaId: 'va2',
+            createdAt: iso(-2 * day),
+            updatedAt: iso(-2 * day),
+            messages: [
+                { senderId: 'client1', text: 'Daniel, are you available for the research-heavy slides in the board deck?', createdAt: iso(-2 * day), readBy: ['client1'] }
+            ]
+        },
+        {
+            id: 103,
+            clientId: 'client2',
+            vaId: 'va1',
+            createdAt: iso(-9 * day),
+            updatedAt: iso(-1 * day),
+            messages: [
+                { senderId: 'client2', text: 'Thanks for the KPI dashboard. Can we keep the same format monthly?', createdAt: iso(-1 * day), readBy: ['client2'] }
+            ]
+        }
+    ];
+
+    const schedules = [
+        { id: 201, clientId: 'client1', vaId: 'va1', time: callSlot.toISOString(), status: 'pending', createdAt: iso(-4 * hour) },
+        { id: 202, clientId: 'client2', vaId: 'va1', time: pastCall.toISOString(), status: 'accepted', createdAt: iso(-5 * day) }
+    ];
+
+    const inquiries = [
+        {
+            id: 301,
+            name: 'Hannah Whitfield',
+            email: 'hannah@lumenhealth.io',
+            message: 'We are a Series B healthtech team looking for two executive VAs for our CEO and CFO. Can we talk next week?',
+            submittedAt: iso(-2 * day)
+        },
+        {
+            id: 302,
+            name: 'Omar Haddad',
+            email: 'omar@haddadpartners.com',
+            message: 'Interested in a part-time VA for travel and calendar. What does onboarding look like?',
+            submittedAt: iso(-6 * hour)
+        }
+    ];
+
+    const courseProgress = {
+        va1: { 1: 'completed', 2: 'enrolled' }
+    };
+
+    return {
+        [STORAGE_KEYS.users]: users,
+        [STORAGE_KEYS.userProfiles]: userProfiles,
+        [STORAGE_KEYS.tasks]: tasks,
+        [STORAGE_KEYS.courses]: DEMO_COURSES,
+        [STORAGE_KEYS.courseProgress]: courseProgress,
+        [STORAGE_KEYS.inquiries]: inquiries,
+        [STORAGE_KEYS.conversations]: conversations,
+        [STORAGE_KEYS.schedules]: schedules
+    };
+}
+
+function seedDemoData() {
+    const data = buildDemoData();
+    Object.entries(data).forEach(([key, value]) => {
+        localStorage.setItem(key, JSON.stringify(value));
+    });
+    localStorage.removeItem(STORAGE_KEYS.session);
+    localStorage.setItem(DEMO_SEED_KEY, DEMO_SEED_VERSION);
+}
+
+function resetDemoData() {
+    if (!window.confirm('Reset all demo data? This restores the sample users, tasks and messages, and signs you out.')) {
+        return;
+    }
+
+    seedDemoData();
+    syncAllStateToSupabase();
+    document.querySelectorAll('.modal').forEach((modal) => {
+        if (modal.style.display === 'flex') {
+            closeModal(modal.id);
+        }
+    });
+
+    currentUser = null;
+    currentRole = null;
+    showLandingSections();
+    updateNavForSession();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast('Demo data reset. Sample data restored.', 'success');
+}
+
+// ===== HTML ESCAPING =====
+function escapeHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function safeUrl(value) {
+    const url = String(value || '');
+    if (isValidHttpUrl(url) || url.startsWith('data:')) {
+        return escapeHtml(url);
+    }
+    return '#';
+}
+
+// ===== INFO MODAL (Privacy / Terms) =====
+const INFO_PAGES = {
+    privacy: {
+        title: 'Privacy',
+        subtitle: 'How Biz Buddy handles your information.',
+        body: [
+            'We only collect the details needed to match clients with virtual assistants: contact information, profile details, and task information you choose to share.',
+            'Client and VA data is never sold. Confidential task material is visible only to the client and the VA assigned to that task.',
+            'In this demo, all data is stored in your browser only and can be cleared at any time with "Reset demo data" in the footer.',
+            'Questions? Email hello@bizbuddy.com.'
+        ]
+    },
+    terms: {
+        title: 'Terms',
+        subtitle: 'The essentials of working with Biz Buddy.',
+        body: [
+            'Clients post tasks with a clear scope and budget. VAs apply, and the client selects one VA per task.',
+            'Payment is released by the client once a task is marked complete. Both parties can rate each other after completion.',
+            'All VAs agree to confidentiality and professional standards before their application is approved.',
+            'Full terms of service are available on request at hello@bizbuddy.com.'
+        ]
+    }
+};
+
+function openInfoModal(pageKey) {
+    const page = INFO_PAGES[pageKey];
+    if (!page) {
+        return;
+    }
+
+    document.getElementById('infoModalTitle').innerText = page.title;
+    document.getElementById('infoModalSubtitle').innerText = page.subtitle;
+    document.getElementById('infoModalBody').innerHTML = page.body
+        .map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`)
+        .join('');
+
+    const modal = document.getElementById('infoModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// ===== NAV LOGIN / DASHBOARD BUTTON =====
+function updateNavForSession() {
+    const navLoginBtn = document.getElementById('navLoginBtn');
+    if (navLoginBtn) {
+        navLoginBtn.innerText = currentUser ? 'My Dashboard' : 'Login';
+    }
+}
+
+function handleNavLoginClick() {
+    const navLinks = document.querySelector('.nav-links');
+    if (navLinks) navLinks.classList.remove('active');
+
+    if (currentUser) {
+        openDashboard(currentUser.role);
+        return;
+    }
+    openLoginModal();
+}
+
+function showLandingSections() {
+    const dashboard = document.getElementById('dashboard');
+    if (dashboard) {
+        dashboard.style.display = 'none';
+    }
+    ['home', 'services', 'requirements', 'about', 'contact'].forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) element.style.display = '';
+    });
 }
 
 function isSupabaseEnabled() {
@@ -445,28 +830,34 @@ function setupNav() {
     const navLinks = document.querySelector('.nav-links');
 
     // Toggle mobile menu
-    if (hamburger) {
+    if (hamburger && navLinks) {
         hamburger.addEventListener('click', () => {
             navLinks.classList.toggle('active');
         });
+        hamburger.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                navLinks.classList.toggle('active');
+            }
+        });
     }
 
-    // Handle nav link clicks
-    document.querySelectorAll('.nav-link').forEach(link => {
+    // Close the mobile menu after choosing any nav button
+    if (navLinks) {
+        navLinks.querySelectorAll('button').forEach((button) => {
+            button.addEventListener('click', () => navLinks.classList.remove('active'));
+        });
+    }
+
+    // Handle nav link clicks (and footer section links)
+    document.querySelectorAll('.nav-link, .section-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const href = link.getAttribute('href');
-            
-            if (href) {
-                // Show home, services, about, contact sections
-                ['home', 'services', 'requirements', 'about', 'contact'].forEach(id => {
-                    const element = document.getElementById(id);
-                    if (element) element.style.display = 'block';
-                });
 
-                // Hide dashboard
-                const dashboard = document.getElementById('dashboard');
-                if (dashboard) dashboard.style.display = 'none';
+            if (href) {
+                // Show landing sections, hide dashboard
+                showLandingSections();
 
                 // Scroll to section
                 const targetSection = document.querySelector(href);
@@ -554,25 +945,19 @@ function openDashboard(role) {
     updateDashboardNotifications(resolvedRole);
 
     // Scroll to dashboard
-    dashboard.scrollIntoView({ behavior: 'smooth' });
+    if (dashboard) {
+        dashboard.scrollIntoView({ behavior: 'smooth' });
+    }
 }
 
 function logout() {
-    const dashboard = document.getElementById('dashboard');
-    if (dashboard) {
-        dashboard.style.display = 'none';
-    }
-
-    // Show landing sections
-    ['home', 'services', 'requirements', 'about', 'contact'].forEach(id => {
-        const element = document.getElementById(id);
-        if (element) element.style.display = 'block';
-    });
+    showLandingSections();
 
     // Reset user
     currentUser = null;
     currentRole = null;
     clearCurrentSession();
+    updateNavForSession();
 
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -581,8 +966,8 @@ function logout() {
 
 // ===== TASK MANAGEMENT =====
 function getTasks() {
-    const tasksData = localStorage.getItem(STORAGE_KEYS.tasks) || '[]';
-    return JSON.parse(tasksData);
+    const tasks = parseStoredJson(STORAGE_KEYS.tasks, []);
+    return Array.isArray(tasks) ? tasks : [];
 }
 
 function saveTasks(tasks) {
@@ -627,7 +1012,7 @@ function renderClientTasks() {
 
                 return `
                     <div class="inline-row">
-                        <span class="chip">${applicantEmail}</span>
+                        <span class="chip">${escapeHtml(applicantEmail)}</span>
                         ${isAccepted
                             ? '<span class="status-badge">Accepted</span>'
                             : canAccept
@@ -641,21 +1026,18 @@ function renderClientTasks() {
 
         return `
             <div class="task-item">
-                <strong>${task.title}</strong>
-                <span>$${task.budget} · ${task.status}</span>
-                <p>${task.description}</p>
-                <p>Milestone: ${task.milestone || 'Not set'}</p>
-                <p>Invoice: ${task.invoiceStatus || 'pending'}</p>
-                ${task.attachmentData ? `<p><a href="${task.attachmentData}" download="${task.attachmentName || 'task-brief'}">Download brief</a></p>` : ''}
-                <p>Selected VA: ${acceptedVaDisplay}</p>
+                <strong>${escapeHtml(task.title)}</strong>
+                <span>$${escapeHtml(task.budget)} · ${escapeHtml(task.status)}</span>
+                <p>${escapeHtml(task.description)}</p>
+                <p>Milestone: ${escapeHtml(task.milestone || 'Not set')}</p>
+                <p>Invoice: ${escapeHtml(task.invoiceStatus || 'pending')}</p>
+                ${task.attachmentData ? `<p><a href="${safeUrl(task.attachmentData)}" download="${escapeHtml(task.attachmentName || 'task-brief')}">Download brief</a></p>` : ''}
+                <p>Selected VA: ${escapeHtml(acceptedVaDisplay)}</p>
                 <div class="sub-block">
                     <p>Applicants (${applicants.length})</p>
                     <div class="inline-list">${applicantMarkup}</div>
                 </div>
-                ${task.status === 'completed'
-                    ? `<button class="btn btn-primary btn-sm" onclick="updateTaskStatus(${task.id}, 'open')">Reopen</button>`
-                    : `<button class="btn btn-primary btn-sm" onclick="updateTaskStatus(${task.id}, '${task.status === 'open' ? 'in-progress' : 'completed'}')">${task.status === 'open' ? 'Start Task' : 'Mark Complete'}</button>`
-                }
+                ${renderClientTaskStatusAction(task)}
                 ${task.status === 'completed' && task.invoiceStatus !== 'paid'
                     ? `<button class="btn btn-primary btn-sm" onclick="releasePayment(${task.id})">Release Payment</button>`
                     : task.invoiceStatus === 'paid'
@@ -667,6 +1049,20 @@ function renderClientTasks() {
             </div>
         `;
     }).join('');
+}
+
+function renderClientTaskStatusAction(task) {
+    if (task.status === 'completed') {
+        return `<button class="btn btn-primary btn-sm" onclick="updateTaskStatus(${task.id}, 'open')">Reopen</button>`;
+    }
+
+    if (task.status === 'open') {
+        return task.acceptedVaId
+            ? `<button class="btn btn-primary btn-sm" onclick="updateTaskStatus(${task.id}, 'in-progress')">Start Task</button>`
+            : '<p>Accept an applicant to start this task.</p>';
+    }
+
+    return `<button class="btn btn-primary btn-sm" onclick="updateTaskStatus(${task.id}, 'completed')">Mark Complete</button>`;
 }
 
 function updateDashboardNotifications(role) {
@@ -737,9 +1133,10 @@ function renderVATasks() {
         if (availableTasks.length > 0) {
             vaTasksContainer.innerHTML = availableTasks.map(task => `
                 <div class="task-item">
-                    <strong>${task.title}</strong>
-                    <span>$${task.budget}</span>
-                    <p>${task.description}</p>
+                    <strong>${escapeHtml(task.title)}</strong>
+                    <span>$${escapeHtml(task.budget)}</span>
+                    <p>${escapeHtml(task.description)}</p>
+                    <p>Client: ${escapeHtml(getUserDisplay(task.clientId))}${task.milestone ? ` · Milestone: ${escapeHtml(task.milestone)}` : ''}</p>
                     ${(task.applicants || []).includes(currentUser?.id)
                         ? '<button class="btn btn-primary btn-sm" disabled>Applied</button>'
                         : `<button class="btn btn-primary btn-sm" onclick="applyForTask(${task.id})">Apply</button>`
@@ -770,9 +1167,10 @@ function renderVAAssignedTasks() {
 
     assignedContainer.innerHTML = assignedTasks.map((task) => `
         <div class="task-item">
-            <strong>${task.title}</strong>
-            <span>$${task.budget} · ${task.status}</span>
-            <p>${task.description}</p>
+            <strong>${escapeHtml(task.title)}</strong>
+            <span>$${escapeHtml(task.budget)} · ${escapeHtml(task.status)}</span>
+            <p>${escapeHtml(task.description)}</p>
+            <p>Client: ${escapeHtml(getUserDisplay(task.clientId))} · Invoice: ${escapeHtml(task.invoiceStatus || 'pending')}</p>
             ${renderTaskThread(task, 'va')}
             ${renderTaskRating(task, 'va')}
         </div>
@@ -819,16 +1217,16 @@ function renderClientVADirectory() {
         const verificationLabel = profile.verificationStatus === 'verified' ? 'Verified' : 'Unverified';
         return `
             <div class="task-item">
-                <strong>${profile.name || 'VA Professional'}</strong>
-                <span>${vaUser.email}</span>
-                <p>${profile.skills || 'Skills will appear after profile completion.'}</p>
-                <p>${rateLabel} · ${availabilityLabel}</p>
+                <strong>${escapeHtml(profile.name || 'VA Professional')}</strong>
+                <span>${escapeHtml(vaUser.email)}</span>
+                <p>${escapeHtml(profile.skills || 'Skills will appear after profile completion.')}</p>
+                <p>${escapeHtml(rateLabel)} · ${escapeHtml(availabilityLabel)}</p>
                 <p>${verificationLabel} · Rating ${rating ? rating.toFixed(1) : 'N/A'}</p>
                 <div class="inline-row">
                     <button class="btn btn-primary btn-sm" onclick="openVAProfilePreview('${vaUser.id}')">View Profile</button>
                     <button class="btn btn-primary btn-sm" onclick="openPrivateMessageModal('${vaUser.id}')">Message</button>
-                    ${profile.cvLink ? `<a href="${profile.cvLink}" target="_blank" rel="noopener noreferrer">CV</a>` : ''}
-                    ${profile.portfolioLink ? `<a href="${profile.portfolioLink}" target="_blank" rel="noopener noreferrer">Portfolio</a>` : ''}
+                    ${profile.cvLink ? `<a href="${safeUrl(profile.cvLink)}" target="_blank" rel="noopener noreferrer">CV</a>` : ''}
+                    ${profile.portfolioLink ? `<a href="${safeUrl(profile.portfolioLink)}" target="_blank" rel="noopener noreferrer">Portfolio</a>` : ''}
                 </div>
             </div>
         `;
@@ -878,9 +1276,9 @@ function renderClientMatches() {
 
     container.innerHTML = scored.map((item) => `
         <div class="task-item">
-            <strong>${item.profile.name || item.vaUser.email}</strong>
+            <strong>${escapeHtml(item.profile.name || item.vaUser.email)}</strong>
             <span>Score ${item.score.toFixed(1)} · Rating ${item.rating ? item.rating.toFixed(1) : 'N/A'}</span>
-            <p>${item.profile.skills || 'Skills not added yet.'}</p>
+            <p>${escapeHtml(item.profile.skills || 'Skills not added yet.')}</p>
             <div class="inline-row">
                 <button class="btn btn-primary btn-sm" onclick="openVAProfilePreview('${item.vaUser.id}')">View Profile</button>
                 <button class="btn btn-primary btn-sm" onclick="openPrivateMessageModal('${item.vaUser.id}')">Message</button>
@@ -966,18 +1364,18 @@ function renderConversationCard(conversation, viewerRole) {
     const messagesMarkup = lastMessages.length
         ? lastMessages.map((message) => `
             <div class="message-item">
-                <strong>${getUserDisplay(message.senderId)}</strong>
-                <p>${message.text}</p>
+                <strong>${escapeHtml(getUserDisplay(message.senderId))}</strong>
+                <p>${escapeHtml(message.text)}</p>
             </div>
         `).join('')
         : '<p>No messages yet.</p>';
 
     return `
         <div class="task-item">
-            <strong>${viewerRole === 'client' ? 'VA' : 'Client'}: ${counterpart}</strong>
+            <strong>${viewerRole === 'client' ? 'VA' : 'Client'}: ${escapeHtml(counterpart)}</strong>
             <div class="message-list">${messagesMarkup}</div>
             <div class="inline-row">
-                <input class="message-input" id="conversationReply${viewerRole}${conversation.id}" type="text" placeholder="Write a private message...">
+                <input class="message-input" id="conversationReply${viewerRole}${conversation.id}" type="text" placeholder="Write a private message..." onkeydown="if (event.key === 'Enter') { event.preventDefault(); sendConversationReply(${conversation.id}, '${viewerRole}'); }">
                 <button class="btn btn-primary btn-sm" onclick="sendConversationReply(${conversation.id}, '${viewerRole}')">Send</button>
             </div>
         </div>
@@ -1002,7 +1400,8 @@ function openPrivateMessageModal(vaId) {
         pmVaId.value = vaId;
     }
     if (recipient) {
-        recipient.innerText = `Send a direct message to ${vaUser.email}`;
+        const vaName = (getProfiles()[vaId] || {}).name;
+        recipient.innerText = `Send a direct message to ${vaName ? `${vaName} (${vaUser.email})` : vaUser.email}`;
     }
 
     const form = document.getElementById('privateMessageForm');
@@ -1056,18 +1455,18 @@ function openVAProfilePreview(vaId) {
     if (vaPreviewContent) {
         const rating = getAverageRatingForVA(vaId);
         vaPreviewContent.innerHTML = `
-            <p><strong>Bio:</strong> ${profile.bio || 'No bio provided yet.'}</p>
-            <p><strong>Skills:</strong> ${profile.skills || 'Not specified'}</p>
-            <p><strong>Tools:</strong> ${profile.tools || 'Not specified'}</p>
-            <p><strong>Experience:</strong> ${profile.experienceYears || 'Not specified'} years</p>
-            <p><strong>Rate:</strong> ${profile.hourlyRate ? `$${profile.hourlyRate}/hr` : 'Not specified'}</p>
-            <p><strong>Availability:</strong> ${profile.availability || 'Not specified'}</p>
-            <p><strong>Timezone:</strong> ${profile.timezone || 'Not specified'}</p>
-            <p><strong>Verification:</strong> ${profile.verificationStatus || 'unverified'}</p>
+            <p><strong>Bio:</strong> ${escapeHtml(profile.bio || 'No bio provided yet.')}</p>
+            <p><strong>Skills:</strong> ${escapeHtml(profile.skills || 'Not specified')}</p>
+            <p><strong>Tools:</strong> ${escapeHtml(profile.tools || 'Not specified')}</p>
+            <p><strong>Experience:</strong> ${profile.experienceYears ? `${escapeHtml(profile.experienceYears)} years` : 'Not specified'}</p>
+            <p><strong>Rate:</strong> ${profile.hourlyRate ? `$${escapeHtml(profile.hourlyRate)}/hr` : 'Not specified'}</p>
+            <p><strong>Availability:</strong> ${escapeHtml(profile.availability || 'Not specified')}</p>
+            <p><strong>Timezone:</strong> ${escapeHtml(profile.timezone || 'Not specified')}</p>
+            <p><strong>Verification:</strong> ${escapeHtml(profile.verificationStatus || 'unverified')}</p>
             <p><strong>Average Rating:</strong> ${rating ? rating.toFixed(1) : 'N/A'}</p>
             <div class="inline-row" style="margin-top: 0.5rem;">
-                ${profile.cvLink ? `<a href="${profile.cvLink}" target="_blank" rel="noopener noreferrer">View CV</a>` : ''}
-                ${profile.portfolioLink ? `<a href="${profile.portfolioLink}" target="_blank" rel="noopener noreferrer">View Portfolio</a>` : ''}
+                ${profile.cvLink ? `<a href="${safeUrl(profile.cvLink)}" target="_blank" rel="noopener noreferrer">View CV</a>` : ''}
+                ${profile.portfolioLink ? `<a href="${safeUrl(profile.portfolioLink)}" target="_blank" rel="noopener noreferrer">View Portfolio</a>` : ''}
             </div>
         `;
     }
@@ -1079,9 +1478,16 @@ function openVAProfilePreview(vaId) {
 
         previewInviteTask.innerHTML = clientOpenTasks.length
             ? `<option value="">Select one of your open tasks</option>${clientOpenTasks
-                .map((task) => `<option value="${task.id}">${task.title} ($${task.budget})</option>`)
+                .map((task) => `<option value="${task.id}">${escapeHtml(task.title)} ($${escapeHtml(task.budget)})</option>`)
                 .join('')}`
             : '<option value="">No open tasks available</option>';
+    }
+
+    const previewCallTime = document.getElementById('previewCallTime');
+    if (previewCallTime) {
+        previewCallTime.value = '';
+        const minDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+        previewCallTime.min = minDate.toISOString().slice(0, 16);
     }
 
     const modal = document.getElementById('vaProfilePreviewModal');
@@ -1102,7 +1508,7 @@ function messagePreviewedVA() {
     openPrivateMessageModal(vaId);
 }
 
-function addConversationMessage(clientId, vaId, text) {
+function addConversationMessage(clientId, vaId, text, senderId = clientId) {
     const conversations = getConversations();
     let conversation = conversations.find((item) => item.clientId === clientId && item.vaId === vaId);
 
@@ -1119,10 +1525,10 @@ function addConversationMessage(clientId, vaId, text) {
     }
 
     conversation.messages.push({
-        senderId: clientId,
+        senderId,
         text,
         createdAt: new Date().toISOString(),
-        readBy: [clientId]
+        readBy: [senderId]
     });
     conversation.updatedAt = new Date().toISOString();
 
@@ -1295,6 +1701,7 @@ function sendConversationReply(conversationId, viewerRole) {
         renderVAConversations();
         updateDashboardNotifications('va');
     }
+    showToast('Message sent.', 'success');
 }
 
 function renderVASchedules() {
@@ -1317,13 +1724,15 @@ function renderVASchedules() {
 
     container.innerHTML = schedules.map((schedule) => `
         <div class="task-item">
-            <strong>Client: ${getUserDisplay(schedule.clientId)}</strong>
-            <span>${schedule.status}</span>
+            <strong>Client: ${escapeHtml(getUserDisplay(schedule.clientId))}</strong>
+            <span>${escapeHtml(schedule.status)}</span>
             <p>Proposed time: ${new Date(schedule.time).toLocaleString()}</p>
-            <div class="inline-row">
+            ${schedule.status === 'pending'
+                ? `<div class="inline-row">
                 <button class="btn btn-primary btn-sm" onclick="updateScheduleStatus(${schedule.id}, 'accepted')">Accept</button>
                 <button class="btn btn-primary btn-sm" onclick="updateScheduleStatus(${schedule.id}, 'declined')">Decline</button>
-            </div>
+            </div>`
+                : ''}
         </div>
     `).join('');
 }
@@ -1341,6 +1750,11 @@ function scheduleCallWithPreviewedVA() {
         return;
     }
 
+    if (Number.isNaN(new Date(dateTime).getTime()) || new Date(dateTime).getTime() <= Date.now()) {
+        showToast('Please choose a call time in the future.', 'error');
+        return;
+    }
+
     const schedule = {
         id: generateId(),
         clientId: currentUser.id,
@@ -1355,6 +1769,7 @@ function scheduleCallWithPreviewedVA() {
     saveSchedules(schedules);
 
     addConversationMessage(currentUser.id, vaId, `I proposed a call on ${new Date(schedule.time).toLocaleString()}. Please confirm if this works for you.`);
+    closeModal('vaProfilePreviewModal');
     renderClientConversations();
     updateDashboardNotifications('client');
     showToast('Call invitation sent.', 'success');
@@ -1376,8 +1791,14 @@ function updateScheduleStatus(scheduleId, status) {
     schedules[scheduleIndex].status = status;
     saveSchedules(schedules);
 
-    addConversationMessage(schedules[scheduleIndex].clientId, currentUser.id, `I ${status} the call invitation for ${new Date(schedules[scheduleIndex].time).toLocaleString()}.`);
+    addConversationMessage(
+        schedules[scheduleIndex].clientId,
+        currentUser.id,
+        `I ${status} the call invitation for ${new Date(schedules[scheduleIndex].time).toLocaleString()}.`,
+        currentUser.id
+    );
     renderVASchedules();
+    renderVAConversations();
     updateDashboardNotifications('va');
     showToast(`Call invitation ${status}.`, 'success');
 }
@@ -1416,9 +1837,9 @@ function renderAdminTaskModeration() {
 
     container.innerHTML = tasks.map((task) => `
         <div class="task-item">
-            <strong>${task.title}</strong>
-            <span>${task.status} · ${task.invoiceStatus || 'pending'}</span>
-            <p>Client: ${getUserDisplay(task.clientId)}</p>
+            <strong>${escapeHtml(task.title)}</strong>
+            <span>${escapeHtml(task.status)} · ${escapeHtml(task.invoiceStatus || 'pending')}</span>
+            <p>Client: ${escapeHtml(getUserDisplay(task.clientId))}</p>
             <div class="inline-row">
                 <button class="btn btn-primary btn-sm" onclick="moderateTask(${task.id}, 'open')">Set Open</button>
                 <button class="btn btn-primary btn-sm" onclick="moderateTask(${task.id}, 'completed')">Set Completed</button>
@@ -1442,6 +1863,9 @@ function moderateTask(taskId, action) {
     }
 
     if (action === 'delete') {
+        if (!window.confirm(`Delete task "${tasks[taskIndex].title}"? This cannot be undone.`)) {
+            return;
+        }
         tasks.splice(taskIndex, 1);
     } else {
         tasks[taskIndex].status = action;
@@ -1449,7 +1873,8 @@ function moderateTask(taskId, action) {
 
     saveTasks(tasks);
     renderAdminStats();
-    showToast(`Task moderation action applied: ${action}.`, 'success');
+    updateDashboardNotifications('admin');
+    showToast(action === 'delete' ? 'Task deleted.' : `Task set to ${action}.`, 'success');
 }
 
 function applyForTask(taskId) {
@@ -1506,7 +1931,7 @@ function updateTaskStatus(taskId, status) {
     saveTasks(tasks);
     renderClientTasks();
     renderClientMatches();
-    renderAdminStats();
+    updateDashboardNotifications('client');
     showToast(`Task updated to ${status}.`, 'success');
 }
 
@@ -1570,7 +1995,8 @@ function acceptApplicant(taskId, vaId) {
     tasks[taskIndex] = task;
     saveTasks(tasks);
     renderClientTasks();
-    renderAdminStats();
+    renderClientMatches();
+    updateDashboardNotifications('client');
     showToast('VA accepted. Task moved to in progress.', 'success');
 }
 
@@ -1591,8 +2017,8 @@ function renderTaskThread(task, viewerRole) {
     const messagesMarkup = messages.length
         ? messages.map((message) => `
             <div class="message-item">
-                <strong>${getUserDisplay(message.senderId)}</strong>
-                <p>${message.text}</p>
+                <strong>${escapeHtml(getUserDisplay(message.senderId))}</strong>
+                <p>${escapeHtml(message.text)}</p>
             </div>
         `).join('')
         : '<p>No messages yet.</p>';
@@ -1602,7 +2028,7 @@ function renderTaskThread(task, viewerRole) {
             <p>Task Chat</p>
             <div class="message-list">${messagesMarkup}</div>
             ${task.status !== 'completed'
-                ? `<div class="inline-row"><input class="message-input" id="taskMessage${viewerRole}${task.id}" type="text" placeholder="Type update..." /><button class="btn btn-primary btn-sm" onclick="sendTaskMessage(${task.id}, '${viewerRole}')">Send</button></div>`
+                ? `<div class="inline-row"><input class="message-input" id="taskMessage${viewerRole}${task.id}" type="text" placeholder="Type update..." onkeydown="if (event.key === 'Enter') { event.preventDefault(); sendTaskMessage(${task.id}, '${viewerRole}'); }" /><button class="btn btn-primary btn-sm" onclick="sendTaskMessage(${task.id}, '${viewerRole}')">Send</button></div>`
                 : ''
             }
         </div>
@@ -1656,6 +2082,7 @@ function sendTaskMessage(taskId, senderRole) {
     } else if (currentUser.role === 'va') {
         renderVAAssignedTasks();
     }
+    showToast('Task update sent.', 'success');
 }
 
 function renderTaskRating(task, viewerRole) {
@@ -1794,9 +2221,9 @@ function renderVACourses() {
 
         return `
             <div class="task-item">
-                <strong>${course.title}</strong>
-                <span>${course.level} · ${course.duration}</span>
-                <p>${course.description}</p>
+                <strong>${escapeHtml(course.title)}</strong>
+                <span>${escapeHtml(course.level)} · ${escapeHtml(course.duration)}</span>
+                <p>${escapeHtml(course.description)}</p>
                 ${actionMarkup}
             </div>
         `;
@@ -1850,9 +2277,10 @@ function downloadCertificate(courseId) {
         return;
     }
 
+    const certificateName = (getProfiles()[currentUser.id] || {}).name || currentUser.email;
     const certificateContent = [
         'Biz Buddy Certificate of Completion',
-        `Name: ${currentUser.email}`,
+        `Name: ${certificateName}`,
         `Course: ${course.title}`,
         `Date: ${new Date().toLocaleDateString()}`
     ].join('\n');
@@ -1883,9 +2311,10 @@ function renderAdminInquiries() {
 
     inquiryContainer.innerHTML = inquiries.map((inquiry) => `
         <div class="task-item">
-            <strong>${inquiry.name}</strong>
-            <span>${inquiry.email}</span>
-            <p>${inquiry.message}</p>
+            <strong>${escapeHtml(inquiry.name)}</strong>
+            <span>${escapeHtml(inquiry.email)}</span>
+            <p>${escapeHtml(inquiry.message)}</p>
+            <p>Received ${inquiry.submittedAt ? new Date(inquiry.submittedAt).toLocaleString() : 'recently'}</p>
         </div>
     `).join('');
 }
@@ -1910,12 +2339,12 @@ function renderAdminVAApplications() {
 
         return `
             <div class="task-item">
-                <strong>${vaUser.email}</strong>
-                <span>${statusLabel}</span>
-                <p>Verification: ${profile.verificationStatus || 'unverified'}</p>
-                <p>CV: ${profile.cvLink ? `<a href="${profile.cvLink}" target="_blank" rel="noopener noreferrer">Open</a>` : 'Not provided'}</p>
-                <p>Portfolio: ${profile.portfolioLink ? `<a href="${profile.portfolioLink}" target="_blank" rel="noopener noreferrer">Open</a>` : 'Not provided'}</p>
-                ${profile.verificationDocData ? `<p><a href="${profile.verificationDocData}" download="${profile.verificationDocName || 'verification'}">Verification file</a></p>` : ''}
+                <strong>${escapeHtml(profile.name ? `${profile.name} · ${vaUser.email}` : vaUser.email)}</strong>
+                <span>${escapeHtml(statusLabel)}</span>
+                <p>Verification: ${escapeHtml(profile.verificationStatus || 'unverified')}</p>
+                <p>CV: ${profile.cvLink ? `<a href="${safeUrl(profile.cvLink)}" target="_blank" rel="noopener noreferrer">Open</a>` : 'Not provided'}</p>
+                <p>Portfolio: ${profile.portfolioLink ? `<a href="${safeUrl(profile.portfolioLink)}" target="_blank" rel="noopener noreferrer">Open</a>` : 'Not provided'}</p>
+                ${profile.verificationDocData ? `<p><a href="${safeUrl(profile.verificationDocData)}" download="${escapeHtml(profile.verificationDocName || 'verification')}">Verification file</a></p>` : ''}
                 <div class="inline-row">
                     <button class="btn btn-primary btn-sm" onclick="updateVAApproval('${vaUser.id}', 'approved')">Approve</button>
                     <button class="btn btn-primary btn-sm" onclick="updateVAApproval('${vaUser.id}', 'rejected')">Reject</button>
@@ -1955,7 +2384,7 @@ function bulkApproveVAs() {
         return user;
     });
     saveUsers(users);
-    renderAdminVAApplications();
+    renderAdminStats();
     updateDashboardNotifications('admin');
     showToast('All pending VA applications approved.', 'success');
 }
@@ -2025,12 +2454,17 @@ function updateVAApproval(vaId, status) {
         saveCurrentSession(currentUser);
     }
 
-    renderAdminVAApplications();
+    renderAdminStats();
+    updateDashboardNotifications('admin');
     showToast(`VA status updated to ${status}.`, 'success');
 }
 
 // ===== MODAL FUNCTIONS =====
 function openPostTaskModal() {
+    const form = document.getElementById('postTaskForm');
+    if (form) {
+        form.reset();
+    }
     const modal = document.getElementById('postTaskModal');
     if (modal) {
         modal.style.display = 'flex';
@@ -2070,12 +2504,14 @@ function openProfileModal() {
     if (profileTimezoneEl) profileTimezoneEl.value = profile.timezone || '';
     if (profileVerificationPreview) {
         profileVerificationPreview.innerHTML = profile.verificationDocData
-            ? `<a href="${profile.verificationDocData}" download="${profile.verificationDocName || 'verification-doc'}">Current verification file</a>`
+            ? `<a href="${safeUrl(profile.verificationDocData)}" download="${escapeHtml(profile.verificationDocName || 'verification-doc')}">Current verification file</a>`
             : '<span>No verification file uploaded yet.</span>';
     }
     if (vaProfileFieldsEl) {
         vaProfileFieldsEl.style.display = currentUser.role === 'va' ? 'block' : 'none';
     }
+    const profileVerificationFileEl = document.getElementById('profileVerificationFile');
+    if (profileVerificationFileEl) profileVerificationFileEl.value = '';
 
     const modal = document.getElementById('profileModal');
     if (modal) {
@@ -2086,6 +2522,10 @@ function openProfileModal() {
 
 function openLoginModal(role) {
     authRole = role || null;
+    ['loginForm', 'signupForm'].forEach((formId) => {
+        const form = document.getElementById(formId);
+        if (form) form.reset();
+    });
     setAuthMode('login');
     updateSignupRequirementUI();
     const modal = document.getElementById('loginModal');
@@ -2181,6 +2621,10 @@ function updateSignupRequirementUI() {
     }
 }
 
+function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
 function isValidHttpUrl(value) {
     try {
         const url = new URL(value);
@@ -2215,7 +2659,7 @@ function handleLogin(event) {
     event.preventDefault();
     clearAuthErrors();
 
-    const email = document.getElementById('loginEmail')?.value || '';
+    const email = (document.getElementById('loginEmail')?.value || '').trim();
     const password = document.getElementById('loginPassword')?.value || '';
 
     // Basic validation
@@ -2246,6 +2690,7 @@ function handleLogin(event) {
     currentUser = matchedUser;
     saveCurrentSession(matchedUser);
     openDashboard(matchedUser.role);
+    updateNavForSession();
     if (matchedUser.role === 'va' && matchedUser.approvalStatus !== 'approved') {
         showToast('VA application is pending admin review.', 'info');
         return;
@@ -2257,7 +2702,7 @@ function handleSignup(event) {
     event.preventDefault();
     clearAuthErrors();
 
-    const email = document.getElementById('signupEmail')?.value || '';
+    const email = (document.getElementById('signupEmail')?.value || '').trim();
     const password = document.getElementById('signupPassword')?.value || '';
     const confirmPassword = document.getElementById('signupConfirm')?.value || '';
     const role = authRole || document.getElementById('signupRole')?.value || 'client';
@@ -2268,7 +2713,7 @@ function handleSignup(event) {
         return;
     }
 
-    if (!email.includes('@')) {
+    if (!isValidEmail(email)) {
         showAuthError('Please enter a valid email');
         return;
     }
@@ -2324,8 +2769,11 @@ function handleSignup(event) {
         return;
     }
 
-    const roleUsers = users.filter(user => user.role === role);
-    const nextRoleId = `${role}${roleUsers.length + 1}`;
+    let nextIndex = users.filter(user => user.role === role).length + 1;
+    while (users.some(user => user.id === `${role}${nextIndex}`)) {
+        nextIndex += 1;
+    }
+    const nextRoleId = `${role}${nextIndex}`;
     const newUser = {
         id: nextRoleId,
         email,
@@ -2360,8 +2808,11 @@ function handleSignup(event) {
     currentUser = newUser;
     saveCurrentSession(newUser);
     openDashboard(role);
+    updateNavForSession();
     showToast(role === 'va' ? 'VA account created and submitted for admin review.' : 'Account created successfully.', 'success');
 }
+
+const MAX_ATTACHMENT_BYTES = 1024 * 1024;
 
 async function handlePostTask(event) {
     event.preventDefault();
@@ -2378,8 +2829,18 @@ async function handlePostTask(event) {
     const milestone = (document.getElementById('taskMilestone')?.value || '').trim();
     const attachmentFile = document.getElementById('taskAttachment')?.files?.[0] || null;
 
-    if (!title || !description || !budget || !category) {
+    if (!title || !description || !category) {
         showToast('Please complete all task fields.', 'error');
+        return;
+    }
+
+    if (!Number.isFinite(budget) || budget <= 0) {
+        showToast('Please enter a budget greater than $0.', 'error');
+        return;
+    }
+
+    if (attachmentFile && attachmentFile.size > MAX_ATTACHMENT_BYTES) {
+        showToast('Attachment is too large for demo storage (max 1 MB).', 'error');
         return;
     }
 
@@ -2413,7 +2874,12 @@ async function handlePostTask(event) {
     };
 
     tasks.push(newTask);
-    saveTasks(tasks);
+    try {
+        saveTasks(tasks);
+    } catch (_error) {
+        showToast('Could not save the task: browser storage is full.', 'error');
+        return;
+    }
 
     const form = document.getElementById('postTaskForm');
     if (form) {
@@ -2449,6 +2915,32 @@ async function handleProfileSave(event) {
     if (!name || !email) {
         showToast('Name and email are required.', 'error');
         return;
+    }
+
+    if (!isValidEmail(email)) {
+        showToast('Please enter a valid email address.', 'error');
+        return;
+    }
+
+    const emailTaken = getUsers().some((user) => user.id !== currentUser.id && user.email.toLowerCase() === email.toLowerCase());
+    if (emailTaken) {
+        showToast('That email is already used by another account.', 'error');
+        return;
+    }
+
+    if (currentUser.role === 'va') {
+        if (experienceYears && (Number(experienceYears) < 0 || !Number.isFinite(Number(experienceYears)))) {
+            showToast('Years of experience must be 0 or more.', 'error');
+            return;
+        }
+        if (hourlyRate && (Number(hourlyRate) < 0 || !Number.isFinite(Number(hourlyRate)))) {
+            showToast('Hourly rate must be 0 or more.', 'error');
+            return;
+        }
+        if (verificationFile && verificationFile.size > MAX_ATTACHMENT_BYTES) {
+            showToast('Verification file is too large for demo storage (max 1 MB).', 'error');
+            return;
+        }
     }
 
     const profiles = getProfiles();
@@ -2511,6 +3003,11 @@ function handleContactSubmit(event) {
         return;
     }
 
+    if (!isValidEmail(email)) {
+        showToast('Please enter a valid email address.', 'error');
+        return;
+    }
+
     const inquiries = getInquiries();
     inquiries.push({
         id: Date.now(),
@@ -2530,5 +3027,6 @@ function handleContactSubmit(event) {
 
     if (currentUser && currentUser.role === 'admin') {
         renderAdminInquiries();
+        updateDashboardNotifications('admin');
     }
 }
